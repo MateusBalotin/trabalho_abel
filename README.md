@@ -1,4 +1,3 @@
-# trabalho_abel
 using Plots
 pyplot(size=(800,800))
 
@@ -73,12 +72,11 @@ function poliort(n, w, f, i_1, i_2)
     return A, F
 end
 #Aplicando em x
-function vpoliort(x)
+function vpoliort(x, A_1 , F)
     v = 0.0
-    A,F = poliort(n, w, f, i_1, i_2)
-    m = length(A)
+    m = length(A_1)
     for i = 1:m
-        v += A[i]*F[i](x)
+        v += A_1[i]*F[i](x)
     end
     return v
 end
@@ -86,41 +84,53 @@ end
 #Quadrados Mínimos
 #Definindo o polinômio
 function poliquad(f,n,i_1,i_2)
-    I = ones(n,n)
-    A = ones(n)
-    B = ones(n)
-    for j = 1:n
-        for k = 1:n
-            I[j,k] = integral(x -> x^(j+k),i_1,i_2)
+    I = ones(n+1,n+1)
+    A = ones(n+1)
+    B = ones(n+1)
+    for j = 0:n
+        for k = 0:n
+            I[j+1,k+1] = integral(x -> x^(j+k),i_1,i_2)
         end
     end
-    for j = 1:n
-        B[j] = integral(x -> (x^j)*f(x),i_1,i_2)
+    for j = 0:n
+        B[j+1] = integral(x -> (x^j)*f(x),i_1,i_2)
     end
     A = I\B
     return A
 end
 #Aplicando em x
-function vpoliquad(x)
+function vpoliquad(x, A_2)
     v = 0.0
-    A = poliquad(f,n,i_1,i_2)
     for i = 1:n
-        v += A[i]*x^(i)
+        v += A_2[i]*x^(i-1)
     end
     return v
 end
 #-------------------------------------------------------------------------------
-function erro()
-    erro_ort = integral(x->(f(x)-vpoliort(x))^2, i_1, i_2)
-    erro_quad = integral(x->(f(x)-vpoliquad(x))^2, i_1, i_2)
+function erro_ort()
+    erro_ort = integral(x->(f(x)-vpoliort(x, A_1,F))^2, i_1, i_2)
+    return erro_ort
 end
-#------------------------------------------------------------------------------    
-n = 6
+#------------------------------------------------------------------------------
+function erro_quad()
+    erro_quad = integral(x->(f(x)-vpoliquad(x, A_2))^2, i_1, i_2)
+    return erro_quad
+end
+#-------------------------------------------------------------------------------
+
+n = 3
 i_1 = -1
 i_2 = 1
-f = x -> 1/sqrt(1-x^2)
-w = x -> 1/sqrt(1-x^2)
+f = x -> x * sin(x^2)
+w = x -> 1
 
-plot(x->vpoliquad(x),i_1,i_2,c=:blue)
-plot!(x->vpoliort(x),i_1,i_2,c=:black) 
-plot!(x->f(x),i_1,i_2,c=:green) 
+A_1, F = poliort(n, w, f, i_1, i_2)
+A_2 = poliquad(f,n,i_1,i_2)
+
+plot(x->vpoliort(x, A_1, F),i_1,i_2,c=:black, label = "poliort")
+plot!(x->vpoliquad(x, A_2),i_1,i_2,c=:blue, label = "poliquad")
+plot!(x->f(x),i_1,i_2,c=:red, label = "função")
+
+
+
+

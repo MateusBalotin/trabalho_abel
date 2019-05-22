@@ -1,7 +1,7 @@
 using Plots
 pyplot(size=(800,800))
 
-#Método de integração (posteriormente implementar tansin, comparar qual é melhor)
+#Método de integração (posteriormente implementar tansin,comparar qual é melhor)
 function integral(f; h = 1e-2)
   g(x) = f(tanh(sinh(x)))*(cosh(x)*(sech(sinh(x))^2))
   i = 2*h
@@ -101,36 +101,37 @@ end
 #Aplicando em x
 function vpoliquad(x, A_2)
     v = 0.0
+    n = length(A_2)
     for i = 1:n
         v += A_2[i]*x^(i-1)
     end
     return v
 end
 #-------------------------------------------------------------------------------
-function erro_ort()
-    erro_ort = integral(x->(f(x)-vpoliort(x, A_1,F))^2, i_1, i_2)
+function erro_ort(x, A_1,F)
+    erro_ort = (x->(f(x)-vpoliort(x, A_1, F))^2)
     return erro_ort
 end
-#------------------------------------------------------------------------------
-function erro_quad()
-    erro_quad = integral(x->(f(x)-vpoliquad(x, A_2))^2, i_1, i_2)
+#-------------------------------------------------------------------------------
+function erro_quad(x, A_2)
+    erro_quad = (x->(f(x)-vpoliquad(x, A_2))^2)
     return erro_quad
 end
 #-------------------------------------------------------------------------------
+function main()
+    n, i_1, i_2, f, w = 4, -3, 3, x -> x^2*sin(x^2), x -> 1 
 
-n = 3
-i_1 = -1
-i_2 = 1
-f = x -> x * sin(x^2)
-w = x -> 1
+    A_1, F = poliort(n, w, f, i_1, i_2)
+    A_2 = poliquad(f,n,i_1,i_2)
 
-A_1, F = poliort(n, w, f, i_1, i_2)
-A_2 = poliquad(f,n,i_1,i_2)
-
-plot(x->vpoliort(x, A_1, F),i_1,i_2,c=:black, label = "poliort")
-plot!(x->vpoliquad(x, A_2),i_1,i_2,c=:blue, label = "poliquad")
-plot!(x->f(x),i_1,i_2,c=:red, label = "função")
+    plot(x->vpoliort(x, A_1, F),i_1,i_2,c=:black, label = "poliort")
+    plot!(x->vpoliquad(x, A_2),i_1,i_2,c=:blue, label = "poliquad")
+    plot!(x->f(x),i_1,i_2,c=:red, label = "função")
 
 
+end
+#-------------------------------------------------------------------------------
+
+main()
 
 

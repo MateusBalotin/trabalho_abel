@@ -1,7 +1,9 @@
-using Plots
-pyplot(size=(800,800))
 
-#Método de integração (posteriormente implementar tansin,comparar qual é melhor)
+using Plots, BenchmarkTools, Polynomials
+pyplot(size=(600,600))
+
+#------------------------------------------------------------------------------
+""" Metodo de integração por tanh(sinh(x))"""
 function integral(f; h = 1e-2)
   g(x) = f(tanh(sinh(x)))*(cosh(x)*(sech(sinh(x))^2))
   i = 2*h
@@ -13,124 +15,127 @@ function integral(f; h = 1e-2)
   return 2*h*S
 end
 
-
 function integral(f, a, b; h = 1e-2)
   c, δ = BigFloat(a + b) / 2, BigFloat(b - a) / 2
   g(t) = f(c + δ * t) * δ
   return integral(g, h=h)
 end
-
-
-#-------------------------------------------------------------------------------
-#Funções coeficientes para polinômio ortogonal
-function coef_a(w, fi, f, i_1, i_2)
-    cima = integral(x-> w(x)*fi(x)*f(x), i_1, i_2)
-    baixo = integral(x-> w(x)*((fi(x)^2)), i_1, i_2)
-    a = cima/baixo
-    return a
-end
-
+#------------------------------------------------------------------------------
+""" Calcula o coeficiencie b"""
 function coef_b(w, fi, i_1, i_2)
     cima = integral(x-> x*w(x)*(fi(x)^2), i_1, i_2)
     baixo = integral(x-> w(x)*((fi(x)^2)), i_1, i_2)
     b = cima/baixo
     return b
 end
-
+#-------------------------------------------------------------------------------
+""" Calcula o coeficiente c"""
 function coef_c(w, fi_1, fi_2, i_1, i_2)
     cima = integral(x-> x*w(x)*fi_1(x)*fi_2(x), i_1, i_2)
     baixo = integral(x-> w(x)*((fi_2(x)^2)), i_1, i_2)
     c = cima/baixo
     return c
 end
-#Definindo o polinômio
-function poliort(n, w, f, i_1, i_2)
-    A = []
+#------------------------------------------------------------------------------
+""" Calcula as funções fi usando os coeficients B e C, usando o package Polyno-
+mials para agrupar os coeficientes para rodar mais rápido"""
+function Fpoliort(n, w, i_1, i_2)
+    F = []
     B = []
     C = []
-    F = Any[x-> 1]
-    #Calculando ao, b1, fi1, a1
-    a = coef_a(w, F[1], f, i_1, i_2)
-    push!(A, a)
+    p = Poly([1])
+    push!(F,p)
     b = coef_b(w, F[1], i_1, i_2)
     push!(B, b)
-    fi = x -> x - b
-    push!(F, fi)
-    a = coef_a(w, F[2], f, i_1, i_2)
-    push!(A, a)
-    #Calculando ai's e fii's
+    p = Poly([-b,1])
+    push!(F, p)
     for k = 2:n
         b = coef_b(w, F[k], i_1, i_2)
         push!(B, b)
         c = coef_c(w, F[k], F[k-1], i_1, i_2)
         push!(C, c)
-        fih = x -> (x-B[k])*F[k](x) - (C[k-1]*F[k-1](x))
-        push!(F,fih)
-        a = coef_a(w, F[k+1], f, i_1, i_2)
-        push!(A, a)
+        p = (Poly([-B[k],1])*F[k]) - (C[k-1]*F[k-1])
+        push!(F,p)
     end
-    return A, F
-end
-#Aplicando em x
-function vpoliort(x, A_1 , F)
-    v = 0.0
-    m = length(A_1)
-    for i = 1:m
-        v += A_1[i]*F[i](x)
-    end
-    return v
+    return F
 end
 #-------------------------------------------------------------------------------
-#Quadrados Mínimos
-#Definindo o polinômio
-function poliquad(f,n,i_1,i_2)
-    I = ones(n+1,n+1)
-    A = ones(n+1)
-    B = ones(n+1)
+""" Calcula os coeficientes A usando uma matriz diagonal"""
+function Apoliort(F,f,n,i_1,i_2)
+    M = zeros(n+1,n+1)
+    A = zeros(n+1)
+    B = zeros(n+1)
     for j = 0:n
-        for k = 0:n
-            I[j+1,k+1] = integral(x -> x^(j+k),i_1,i_2)
+            M[j+1,j+1] = integral(x -> w(x)*F[j+1](x)*F[j+1](x),i_1,i_2)
+    end
+    for j = 0:n
+        B[j+1] = integral(x -> w(x)*f(x)*F[j+1](x),i_1,i_2)
+    end
+    A = M\B
+    return A
+end
+#------------------------------------------------------------------------------
+""" Calcula os polinômios multiplicando os coeficients A pelas funções fis"""
+function Vpoliort(x,A,F)
+    p = 0.0
+    m = length(A)
+    for i = 1:m
+        p = p + A[i]*F[i]
+    end
+    v = p(x)
+    return v
+end
+#------------------------------------------------------------------------------
+""" Método de quadrados mínimos"""
+function Apoliquad(f,n,i_1,i_2)
+    M = zeros(n+1,n+1)
+    A = zeros(n+1)
+    B = zeros(n+1)
+    for j = 0:n
+        for k = j:n
+            M[j+1,k+1] = integral(x -> x^(j+k),i_1,i_2)
+        end
+    end
+    for j = 1:n
+        for k = 0:j-1
+            M[j+1,k+1] = M[k+1,j+1]
         end
     end
     for j = 0:n
-        B[j+1] = integral(x -> (x^j)*f(x),i_1,i_2)
+        B[j+1] = integral(x -> (x^(j))*f(x),i_1,i_2)
     end
-    A = I\B
+    A = M\B
     return A
 end
-#Aplicando em x
-function vpoliquad(x, A_2)
+#------------------------------------------------------------------------------
+""" Calculando o polinômio por quadrados mínimos"""
+function Vpoliquad(x,A)
     v = 0.0
-    n = length(A_2)
-    for i = 1:n
-        v += A_2[i]*x^(i-1)
+    m = length(A)
+    for i = 1:m
+        v += A[i]*x^(i-1)
     end
     return v
 end
-#-------------------------------------------------------------------------------
-function erro_ort(x, A_1,F)
-    erro_ort = (x->(f(x)-vpoliort(x, A_1, F))^2)
-    return erro_ort
-end
-#-------------------------------------------------------------------------------
-function erro_quad(x, A_2)
-    erro_quad = (x->(f(x)-vpoliquad(x, A_2))^2)
-    return erro_quad
-end
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+""" Função main usada para colocar o valor das variaveis e plotar as funções"""
 function main()
-    n, i_1, i_2, f, w = 4, -3, 3, x -> x^2*sin(x^2), x -> 1 
+    n = 13
+    f = x-> 1/sqrt(1-x^2)
+    w = x-> 1
+    i_1 = -1
+    i_2 = 1
+    #Execução principal
+    F_1 = Fpoliort(n, w, i_1, i_2)
+    A_1 = Apoliort(F_1,f,n,i_1,i_2)
+    A_2 = Apoliquad(f,n,i_1,i_2)
 
-    A_1, F = poliort(n, w, f, i_1, i_2)
-    A_2 = poliquad(f,n,i_1,i_2)
-
-    plot(x->vpoliort(x, A_1, F),i_1,i_2,c=:black, label = "poliort")
-    plot!(x->vpoliquad(x, A_2),i_1,i_2,c=:blue, label = "poliquad")
-    plot!(x->f(x),i_1,i_2,c=:red, label = "função")
-
-
+    #Plot da função e dos polinômios
+    plot(x->f(x), i_1, i_2, c=:black, label=:"fun")
+    plot!(x->Vpoliort(x,A_1,F_1), i_1, i_2, c=:red, label=:"ort")
+    plot!(x->Vpoliquad(x,A_2), i_1, i_2, c=:blue, label=:"quad")
+    png("figura_5")
 end
-#-------------------------------------------------------------------------------
 
 main()
 

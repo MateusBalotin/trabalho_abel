@@ -2,8 +2,7 @@
 using Plots, BenchmarkTools, Polynomials
 pyplot(size=(600,600))
 
-#------------------------------------------------------------------------------
-""" Metodo de integração por tanh(sinh(x))"""
+#-------------------------------------------------------------------------------
 function integral(f; h = 1e-2)
   g(x) = f(tanh(sinh(x)))*(cosh(x)*(sech(sinh(x))^2))
   i = 2*h
@@ -21,24 +20,20 @@ function integral(f, a, b; h = 1e-2)
   return integral(g, h=h)
 end
 #------------------------------------------------------------------------------
-""" Calcula o coeficiencie b"""
 function coef_b(w, fi, i_1, i_2)
     cima = integral(x-> x*w(x)*(fi(x)^2), i_1, i_2)
     baixo = integral(x-> w(x)*((fi(x)^2)), i_1, i_2)
     b = cima/baixo
-    return b
+    return round(b;digits=8)
 end
-#-------------------------------------------------------------------------------
-""" Calcula o coeficiente c"""
+
 function coef_c(w, fi_1, fi_2, i_1, i_2)
     cima = integral(x-> x*w(x)*fi_1(x)*fi_2(x), i_1, i_2)
     baixo = integral(x-> w(x)*((fi_2(x)^2)), i_1, i_2)
     c = cima/baixo
-    return c
+    return round(c;digits=8)
 end
 #------------------------------------------------------------------------------
-""" Calcula as funções fi usando os coeficients B e C, usando o package Polyno-
-mials para agrupar os coeficientes para rodar mais rápido"""
 function Fpoliort(n, w, i_1, i_2)
     F = []
     B = []
@@ -60,7 +55,6 @@ function Fpoliort(n, w, i_1, i_2)
     return F
 end
 #-------------------------------------------------------------------------------
-""" Calcula os coeficientes A usando uma matriz diagonal"""
 function Apoliort(F,f,n,i_1,i_2)
     M = zeros(n+1,n+1)
     A = zeros(n+1)
@@ -72,21 +66,22 @@ function Apoliort(F,f,n,i_1,i_2)
         B[j+1] = integral(x -> w(x)*f(x)*F[j+1](x),i_1,i_2)
     end
     A = M\B
-    return A
+    return round.(A;digits=6)
 end
 #------------------------------------------------------------------------------
-""" Calcula os polinômios multiplicando os coeficients A pelas funções fis"""
-function Vpoliort(x,A,F)
-    p = 0.0
+
+#------------------------------------------------------------------------------
+function Ppoliort(A,F)
+    p = Poly([0])
     m = length(A)
     for i = 1:m
         p = p + A[i]*F[i]
     end
-    v = p(x)
-    return v
+    coef = round.(Float64.(coeffs(p));digits=6)
+    p = Poly(coef)
+    return p
 end
 #------------------------------------------------------------------------------
-""" Método de quadrados mínimos"""
 function Apoliquad(f,n,i_1,i_2)
     M = zeros(n+1,n+1)
     A = zeros(n+1)
@@ -105,10 +100,9 @@ function Apoliquad(f,n,i_1,i_2)
         B[j+1] = integral(x -> (x^(j))*f(x),i_1,i_2)
     end
     A = M\B
-    return A
+    return round.(A;digits=6)
 end
 #------------------------------------------------------------------------------
-""" Calculando o polinômio por quadrados mínimos"""
 function Vpoliquad(x,A)
     v = 0.0
     m = length(A)
@@ -118,25 +112,32 @@ function Vpoliquad(x,A)
     return v
 end
 #------------------------------------------------------------------------------
-""" Função main usada para colocar o valor das variaveis e plotar as funções"""
-function main()
-    n = 13
-    f = x-> 1/sqrt(1-x^2)
-    w = x-> 1
-    i_1 = -1
-    i_2 = 1
-    #Execução principal
-    F_1 = Fpoliort(n, w, i_1, i_2)
-    A_1 = Apoliort(F_1,f,n,i_1,i_2)
-    A_2 = Apoliquad(f,n,i_1,i_2)
+#Entradas:
+n = 30
+f = x-> log(x)
+w = x-> 1/sqrt(1-x^2)
+i_1 = 0
+i_2 = 1
 
-    #Plot da função e dos polinômios
-    plot(x->f(x), i_1, i_2, c=:black, label=:"fun")
-    plot!(x->Vpoliort(x,A_1,F_1), i_1, i_2, c=:red, label=:"ort")
-    plot!(x->Vpoliquad(x,A_2), i_1, i_2, c=:blue, label=:"quad")
-    png("figura_5")
-end
+F_1=Fpoliort(n, w, i_1, i_2)
+A_1=Apoliort(F_1,f,n,i_1,i_2)
+A_2=Apoliquad(f,n,i_1,i_2)
 
-main()
+p = Ppoliort(A_1,F_1)
+
+
+#Execução principal
+F_1 = Fpoliort(n, w, i_1, i_2)
+A_1 = Apoliort(F_1,f,n,i_1,i_2)
+A_2 = Apoliquad(f,n,i_1,i_2)
+
+#Plot da função e dos polinômios
+plot(x->f(x), i_1, i_2, c=:black, label=:"fun")
+println(@benchmark plot!(x->p(x), i_1, i_2, c=:red, label=:"ort"))
+println(@benchmark plot!(x->Vpoliquad(x,A_2), i_1, i_2, c=:blue, label=:"quad"))
+
+
+
+
 
 

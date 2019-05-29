@@ -119,19 +119,20 @@ function Vpoliquad(x,A)
 end
 #------------------------------------------------------------------------------
 """ Função main usada para colocar o valor das variaveis e plotar as funções"""
+function main()
+    n = 40
+    f = x-> log(x)
+    w = x-> 1/sqrt(1-x^2)
+    i_1 = 0
+    i_2 = 1
+    #Execução principal
+    F_1 = Fpoliort(n, w, i_1, i_2)
+    A_1 = Apoliort(F_1,f,n,i_1,i_2)
+    A_2 = Apoliquad(f,n,i_1,i_2)
 
-n = 130
-f = x-> log(x)
-w = x-> 1/sqrt(1-x^2)
-i_1 = 0
-i_2 = 1
-#Execução principal
-F_1 = Fpoliort(n, w, i_1, i_2)
-A_1 = Apoliort(F_1,f,n,i_1,i_2)
-A_2 = Apoliquad(f,n,i_1,i_2)
-
-#Plot da função e dos polinômios
-plot(x->f(x), i_1, i_2, c=:black, label=:"fun")
-plot!(x->Vpoliort(x,A_1,F_1), i_1, i_2, c=:red, label=:"ort")
-plot!(x->Vpoliquad(x,A_2), i_1, i_2, c=:blue, label=:"quad")
-
+    #Plot da função e dos polinômios
+    plot(x->f(x), i_1, i_2, c=:black, label=:"fun")
+    plot!(x->Vpoliort(x,A_1,F_1), i_1, i_2, c=:red, label=:"ort")
+    plot!(x->Vpoliquad(x,A_2), i_1, i_2, c=:blue, label=:"quad")
+end
+main()

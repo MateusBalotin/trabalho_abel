@@ -1,3 +1,3 @@
-# trabalho_abel
+# Cálculo Numérico
 
-Esse repositóri contém os trabalhos e atividades feitos na matéria do professor Abel: Cálculo Númerico
+Esse repositór contém os trabalhos e atividades feitos na matéria do professor Abel: Cálculo Númerico
